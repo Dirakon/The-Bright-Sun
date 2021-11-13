@@ -7,18 +7,19 @@ public class PopUp : MonoBehaviour
 {
     public static PopUp singleton;
     public TextMeshProUGUI tmpro,secondTmPro;
-    [SerializeField]Image blackScreen;
+    [SerializeField]public Image blackScreen;
     // Start is called before the first frame update
     void Start()
     {
-        blackScreenOff();
     }
+    public static float levelOfSunness;
     float speed = 1f;
     IEnumerator BlackScreenOn()
     {
         blackScreen.gameObject.SetActive(true);
-        Color startColor = new Color(0, 0, 0, 0);
-        Color endColor = new Color(0, 0, 0, 1);
+        Color startColor = blackScreen.color;
+        Color endColor = blackScreen.color;
+        endColor.a=1f;
         for (float t = 0; t < 1; t += Time.deltaTime * speed)
         {
 
@@ -29,9 +30,9 @@ public class PopUp : MonoBehaviour
 
     IEnumerator BlackScreenOff()
     {
-        Color startColor = new Color(0, 0, 0, 1);
-        Color endColor = new Color(0, 0, 0, 0);
-
+        Color startColor = blackScreen.color;
+        Color endColor = blackScreen.color;
+        endColor.a=0f;
 
         for (float t = 0; t < 1; t += Time.deltaTime * speed)
         {
@@ -41,23 +42,28 @@ public class PopUp : MonoBehaviour
         }
         blackScreen.gameObject.SetActive(false);
     }
-    public void blackScreenOn()
+    public void sunScreenOn()
     {
         StartCoroutine(BlackScreenOn());
     }
-    public void blackScreenOff()
+    public void sunScreenOff()
     {
 
         StartCoroutine(BlackScreenOff());
     }
     void Awake()
     {
+        levelOfSunness=  0f;
         singleton = this;
+        Debug.Log(singleton);
     }
 
     // Update is called once per frame
     void Update()
     {
+        Color color = blackScreen.color;
+        color.a = levelOfSunness;
+        blackScreen.color = color;
        // if (RandomEventManager.eventAllowed)
        //     secondTmPro.text = "";
     }

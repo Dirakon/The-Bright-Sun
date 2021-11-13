@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using TMPro;
 using UnityEngine.UI;
 
 public class Player : MonoBehaviour
@@ -36,6 +38,8 @@ public class Player : MonoBehaviour
     }
     void Awake()
     {
+        player = sourcesToMute[0];
+        RenderHP();
         singleton = this;
     }
     private float xRotation = 0f;
@@ -80,7 +84,7 @@ public class Player : MonoBehaviour
     public bool menu = false;
     public static float slider_sensitivity_value = 0.5f;
     public Slider slider;
-    public AudioSource sourceToMute;
+    public AudioSource[] sourcesToMute;
     public void SliderChanged()
     {
         slider_sensitivity_value = slider.value;
@@ -95,12 +99,54 @@ public class Player : MonoBehaviour
         menu = false;
         UI_panel.SetActive(false);
         AllowEverything();
-        sourceToMute.pitch = 1;
+            foreach (var source in sourcesToMute)
+            source.pitch = 1;
         Time.timeScale = 1f;
     }
     // Update is called once per frame
+    //Upon collision with another GameObject, this GameObject will reverse direction
+    float hp = 100;
+   // public TextMeshProUGUI hpText;
+    void RenderHP(){
+        PopUp.singleton.secondTmPro.text = ((int)hp).ToString();
+    }
+    public float sunnessVelocityAttaked = 2f,sunnessVelocityNormal = -0.5f;
+    public static void getSunned(float sunnesFactor=1){
+        singleton.hp -= PopUp.levelOfSunness*Time.deltaTime*Sun.tagToDamage["SunBurn"] ;
+       singleton.RenderHP();
+        if (singleton.hp <= 0){
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex,LoadSceneMode.Single);
+        }
+        if (PopUp.levelOfSunness > 1)
+            PopUp.levelOfSunness = 1;
+        PopUp.levelOfSunness += Time.deltaTime*singleton.sunnessVelocityAttaked*sunnesFactor;
+    }
+    public static void getUnsunned(){
+        PopUp.levelOfSunness += Time.deltaTime*singleton.sunnessVelocityNormal;
+        if (PopUp.levelOfSunness < 0)
+            PopUp.levelOfSunness = 0;
+    }
+    private void OnTriggerStay(Collider other)
+    {
+        Debug.Log(other.gameObject.tag);
+        getSunned(other.gameObject.tag == "BigRay"?4f:2f);
+        hp -= Time.deltaTime*Sun.tagToDamage[other.gameObject.tag];    
+        if (hp <= 0){
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex,LoadSceneMode.Single);
+        }
+        RenderHP();
+    }
+    public AudioSource walk;
+    public static void RegenHPBy(float reg){
+        singleton.hp +=reg;
+    }
     void Update()
     {
+        if (LaserTower.allowed){
+            PopUp.singleton.secondTmPro.text = "Activate the laser tower!";
+        }else{
+            RenderHP();
+        }
         _mouseSensitivity = slider_sensitivity_value * 40f;
         slider.value = slider_sensitivity_value;
         if (menu && Input.GetKeyDown(KeyCode.Escape))
@@ -110,17 +156,20 @@ public class Player : MonoBehaviour
         }
         if (cancelEverythingFlag)
             return;
+        
         if (!menu && Input.GetKeyDown(KeyCode.Escape))
         {
             menu = true;
             UI_panel.SetActive(true);
             CancelEverything();
             Time.timeScale = 0f;
-            sourceToMute.pitch = 0;
+            foreach (var source in sourcesToMute)
+            source.pitch = 0;
             return;
         }
         camera.transform.localPosition = new Vector3(0, 0, 0);
         HideMouse();
+        getUnsunned();
         RaycastHit hit;
         Ray ray = new Ray(camera.transform.position, camera.transform.forward);
         ActionOnE action = null;
@@ -163,10 +212,19 @@ public class Player : MonoBehaviour
 
 
             //Keyboard commands
-            rigidbody.velocity = GetBaseInput() * mainSpeed * (Input.GetKey(KeyCode.LeftShift) ? 1.5f : 1f);
+            rigidbody.velocity = GetBaseInput() * mainSpeed *(1-PopUp.levelOfSunness)* (Input.GetKey(KeyCode.LeftShift) ? 1.5f : 1f);
+            if (rigidbody.velocity.sqrMagnitude > 0.001){
+                if (!walk.isPlaying){
+                    walk.Play();
+                }
+            }else{
+                if (walk.isPlaying){
+                    walk.Stop();
+                }
+            }
         }
     }
-
+    public static AudioSource player;
     private Vector3 GetBaseInput()
     {
         Vector3 right = camera.transform.right;

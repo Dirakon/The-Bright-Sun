@@ -6,9 +6,15 @@ public class LaserTower : MonoBehaviour
 {
     // Start is called before the first frame update
     void Awake(){
+        allowed = true;
     }
     public ActionOnE action;
     public GameObject objectToShootAt;
+    public AudioSource source;
+    public AudioClip laserSound;
+    public static void Allow(){
+        allowed = true;
+    }
     void Start()
     {
         action = GetComponent<ActionOnE>();
@@ -17,12 +23,19 @@ public class LaserTower : MonoBehaviour
         p2.Stop();
     }
     void Clicked(){
+        if (!allowed)
+            return;
+        
+        Player.RegenHPBy(20);
         StartCoroutine(shootAt(objectToShootAt.transform));
-        //allowed=false;
+        allowed=false;
     }
     public GameObject theLaserItself;
     public ParticleSystem p1,p2;
     IEnumerator shootAt(Transform point, float speed = 0.5f){
+        source.clip=laserSound;
+        source.loop=true;
+        source.Play();
         theLaserItself.transform.LookAt(point);
         theLaserItself.SetActive(true);
         p1.Play();
@@ -40,8 +53,9 @@ public class LaserTower : MonoBehaviour
         p1.Stop();
         p2.Stop();
         Sun.NextStage();
+        source.Stop();
     }
-    public bool allowed = true;
+    public static bool allowed;
     // Update is called once per frame
     void Update()
     {
