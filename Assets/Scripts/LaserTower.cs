@@ -8,6 +8,7 @@ public class LaserTower : MonoBehaviour
     void Awake(){
         allowed = true;
     }
+    public ParticleSystem allowedParticle;
     public ActionOnE action;
     public GameObject objectToShootAt;
     public AudioSource source;
@@ -59,6 +60,14 @@ public class LaserTower : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (allowedParticle.isPlaying){
+            if (!allowed)
+                allowedParticle.Stop();
+        }else{
+            if (allowed){
+                allowedParticle.Play();
+            }
+        }
         action.popUpText = allowed?"Press E to activate the laser":"Laser is not ready";
     }
 }

@@ -39,7 +39,6 @@ public class Player : MonoBehaviour
     void Awake()
     {
         player = sourcesToMute[0];
-        RenderHP();
         singleton = this;
     }
     private float xRotation = 0f;
@@ -48,6 +47,7 @@ public class Player : MonoBehaviour
     void Start()
     {
 
+        RenderHP();
     }
     public void HideMouse()
     {
@@ -82,7 +82,7 @@ public class Player : MonoBehaviour
     public LayerMask actionELayerMask;
     public GameObject UI_panel;
     public bool menu = false;
-    public static float slider_sensitivity_value = 0.5f;
+    public static float slider_sensitivity_value = 0.2f;
     public Slider slider;
     public AudioSource[] sourcesToMute;
     public void SliderChanged()
@@ -102,6 +102,7 @@ public class Player : MonoBehaviour
             foreach (var source in sourcesToMute)
             source.pitch = 1;
         Time.timeScale = 1f;
+        PopUp.singleton.blackScreen.gameObject.SetActive(true);
     }
     // Update is called once per frame
     //Upon collision with another GameObject, this GameObject will reverse direction
@@ -128,8 +129,9 @@ public class Player : MonoBehaviour
     }
     private void OnTriggerStay(Collider other)
     {
-        Debug.Log(other.gameObject.tag);
-        getSunned(other.gameObject.tag == "BigRay"?4f:2f);
+        if (LaserTower.allowed)
+            return;
+        getSunned(2f);
         hp -= Time.deltaTime*Sun.tagToDamage[other.gameObject.tag];    
         if (hp <= 0){
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex,LoadSceneMode.Single);
@@ -159,6 +161,7 @@ public class Player : MonoBehaviour
         
         if (!menu && Input.GetKeyDown(KeyCode.Escape))
         {
+        PopUp.singleton.blackScreen.gameObject.SetActive(false);
             menu = true;
             UI_panel.SetActive(true);
             CancelEverything();
@@ -176,7 +179,6 @@ public class Player : MonoBehaviour
         if (Physics.Raycast(ray, out hit, 9999f, actionELayerMask))
         {
 
-            Debug.Log(hit.collider);
             action = hit.collider.GetComponent<ActionOnE>();
             if (action != null && (action.transform.position - camera.transform.position).magnitude >=
             action.dist)

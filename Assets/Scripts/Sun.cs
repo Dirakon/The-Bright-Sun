@@ -2,8 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-
-[ExecuteInEditMode]
 public class Sun : MonoBehaviour
 {
     public int curPhase = 0;
@@ -110,17 +108,20 @@ public class Sun : MonoBehaviour
             psMain.startColor = Color.Lerp(conf.startFireZone,conf.endFireZone,t);
             yield return null;
         }
-        fireZone.GetComponent<SphereCollider>().enabled = true;
+        var sphereCollider = fireZone.GetComponent<SphereCollider>();
+        sphereCollider.enabled = true;
 
         controlFireZoneFlag = false;
-        yield return new WaitForSeconds(conf.zoneLifeTime);
-        ps.Stop();
-        for (float t = 0; t < 1;){
-            t+= Time.deltaTime*conf.speedOfFireZoneIgnition;
-            
-            psMain.startColor = Color.Lerp(conf.endFireZone,conf.startFireZone,t);
+        float timeLeft = conf.zoneLifeTime;
+        while (timeLeft > 0){
+            if (stopAllEffectsFlag)
+                break;
+            timeLeft-=Time.deltaTime;
             yield return null;
         }
+        sphereCollider.enabled = false;
+        ps.Stop();
+        yield return new WaitForSeconds(ps.main.startLifetime.constant);
         Destroy(fireZone);
     }
     IEnumerator StrikeFromAbove()
@@ -165,13 +166,14 @@ public class Sun : MonoBehaviour
         GameObject attackingRay = Instantiate(bigRayPrefab, rayStandartPoint.position, rayStandartPoint.rotation);
         RaycastHit hit;
         Ray ray = new Ray(attackingRay.transform.position, attackingRay.transform.forward);
-        if (Physics.Raycast(ray, out hit, (pointToLookAt.position - transform.position).magnitude, toPlayerMask))
+        if (Physics.Raycast(ray, out hit, Mathf.Infinity, toPlayerMask))
         {
             GameObject effects = Instantiate(rayPremarkPrefab, hit.point, Quaternion.identity);
             StartCoroutine(RayGrow(attackingRay, hit.distance, effects));
         }
         else
         {
+            Debug.Log("big unable to find");
             Destroy(attackingRay);
         }
 
@@ -201,6 +203,7 @@ public class Sun : MonoBehaviour
     public GameObject rayPremarkPrefab;
     public Transform rayStandartPoint;
     public int unfinishedRays = 0;
+    public bool stopAllEffectsFlag = false;
     IEnumerator RayGrow(GameObject ray, float endSize, GameObject effects, float speed = -1)
     {
         ray.GetComponentInChildren<MeshRenderer>().material = conf.rayMaterial;
@@ -209,6 +212,9 @@ public class Sun : MonoBehaviour
         float raySpeed = speed == -1 ? UnityEngine.Random.Range(conf.minRaySpeed, conf.maxRaySpeed) : speed;
         Vector3 startRay = new Vector3(1, 1, 0);
         Vector3 endRay = new Vector3(1, 1, endSize / 2);
+        ParticleSystem ps =  effects.GetComponent<ParticleSystem>();
+        var psMain = ps.main;
+        psMain.startColor = conf.endFireZone;
         for (float t = 0; t < 1;)
         {
             t += Time.deltaTime * raySpeed;
@@ -254,7 +260,7 @@ public class Sun : MonoBehaviour
             }
             RaycastHit hit;
             Ray ray = new Ray(attackingRay.transform.position, attackingRay.transform.forward);
-            if (Physics.Raycast(ray, out hit, (pointToLookAt.position - transform.position).magnitude, toPlayerMask))
+            if (Physics.Raycast(ray, out hit, Mathf.Infinity, toPlayerMask))
             {
                 GameObject effects = Instantiate(rayPremarkPrefab, hit.point, Quaternion.identity);
                 StartCoroutine(RayGrow(attackingRay, hit.distance, effects));
@@ -293,8 +299,8 @@ public class Sun : MonoBehaviour
         int howManyMovesSave = howManyMoves; float minTimeSave = minTime;
         while (true)
         {
-            if (howManyMoves < -10)
-            {
+            if (howManyMoves < -4)
+            {Debug.Log("unable to locate, striking from above");
                 // force above player, beacause they've hidden well.
                 strikeFromAboveFlag = true;
                 break;
@@ -342,6 +348,8 @@ public class Sun : MonoBehaviour
 
             isInAttack = true;
             var move = StartCoroutine(strikeFromAboveFlag ? StrikeFromAbove() : attacks[UnityEngine.Random.Range(0, attacks.Length)].Invoke());
+            strikeFromAboveFlag = false;
+
             while (isInAttack)
             {
                 if (unableToMove)
@@ -368,10 +376,6 @@ public class Sun : MonoBehaviour
     {
         Color color = singleton.conf.imageColor;
         color.a = 0f;
-        Debug.Log(color);
-        Debug.Log(PopUp.singleton);
-        Debug.Log(PopUp.singleton.blackScreen);
-        Debug.Log(PopUp.singleton.blackScreen.color);
         PopUp.singleton.blackScreen.color = color;
         singleton.GetComponentInChildren<MeshRenderer>().material = singleton.conf.sunMaterial;
         tagToDamage = new Dictionary<string, float>();
@@ -404,6 +408,7 @@ public class Sun : MonoBehaviour
     public AudioSource attackSound;
     IEnumerator nextStageAnimation()
     {
+        stopAllEffectsFlag = true;
         SkyboxManager.Darken();
         Player.player.Stop();
         Player.player.clip=audStop;
@@ -449,6 +454,7 @@ public class Sun : MonoBehaviour
         }
         curScale = newScale;
         singleton.unableToMove = false;
+        stopAllEffectsFlag = false;
     }
     // Update is called once per frame
     bool fixGazeOnAttack=false;
@@ -456,7 +462,6 @@ public class Sun : MonoBehaviour
     float curScale = 1;
     void Update()
     {
-        Debug.Log(curPhase);
         if (fixGazeOnAttack){
             fixGazeOnAttack = isInAttack;
         }

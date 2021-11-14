@@ -55,7 +55,6 @@ public class PopUp : MonoBehaviour
     {
         levelOfSunness=  0f;
         singleton = this;
-        Debug.Log(singleton);
     }
 
     // Update is called once per frame
